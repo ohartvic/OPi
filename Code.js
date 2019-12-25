@@ -58,6 +58,8 @@ function zavod(id, garant) {
   var j = UrlFetchApp.fetch(url).getContentText();
   var parsedEventInfo = JSON.parse(j);
 
+  // vypíšeme jednotlivé závodníky ...
+  // .. pozor na štafety ST
   for (x in parsedEventInfo.Data) {
     var regNo = (infoZavod.disciplinaZkratka == "ST") ? "N/A" : parsedEventInfo.Data[x].RegNo;
     var name = parsedEventInfo.Data[x].Name;
