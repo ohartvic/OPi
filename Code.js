@@ -184,7 +184,7 @@ function zebrickoveZavody(rok) {
   if (rok == null) rok = (new Date()).getYear();
 
   const urlCelostatni = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1,2&level=1,2,3&method=getEventList';
-  const urlJihoceske = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1&level=4&rg=JČ&method=getEventList';
+  const urlJihoceske = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1&level=4,11&rg=JČ&method=getEventList';
 
   //vytvorime zalozku pro novy zavod
   var as = SpreadsheetApp.getActiveSpreadsheet();
