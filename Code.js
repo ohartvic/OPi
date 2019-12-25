@@ -183,7 +183,8 @@ function placenoKlubem(regNo, terminPrihlasky, classDesc, bezel, etapovy) {
 function zebrickoveZavody(rok) {
   if (rok == null) rok = (new Date()).getYear();
 
-  const urlCelostatni = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1,2&level=1,2,3&method=getEventList';
+  const urlCelostatni = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1,2&level=1,2,3&rg=Č&method=getEventList';
+  const urlMCR = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1,2&level=1,2,3&rg=ČR&method=getEventList';
   const urlJihoceske = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom=' + rok + '-01-01&dateto=' + rok + '-12-31&sport=1&level=4,11&rg=JČ&method=getEventList';
 
   //vytvorime zalozku pro novy zavod
@@ -193,14 +194,30 @@ function zebrickoveZavody(rok) {
   headerColor = "#dfe3ee";
 
   // záhlaví 
-  sheet.appendRow(["", "Datum závodu", "ORIS ID", "Sport", "Disciplina", "Název závodu", "Soutěž", "Pořádá", "Garant", "Startovné celkem", "Startovné oddíl"]);
+  sheet.appendRow(["", "Datum závodu", "ORIS ID", "Sport", "Disciplina", "Název závodu", "Soutěž", "Pořádá", "Garant", "Startovné celkem", "Startovné oddíl", "Uzavřeno"]);
 
   // formatujeme prvni sloupec, oddělovací řádku a barvu
   sheet.getRange("B1:L1").setBackground(headerColor);
   sheet.setColumnWidth(1, 20);
   sheet.setColumnWidth(6, 230);
 
-  var j = UrlFetchApp.fetch(urlCelostatni).getContentText();
+  populateZebrickoveZavody(urlCelostatni, sheet);
+  populateZebrickoveZavody(urlMCR, sheet);
+  populateZebrickoveZavody(urlJihoceske, sheet);
+  
+  // setřídíme podle datumu
+  sheet.getRange("B2:M" + sheet.getLastRow()).sort([{ column: 2, ascending: true }]);
+  // fixujeme záhlaví
+  sheet.setFrozenRows(1);
+  // formatujeme datum
+  sheet.getRange("B2:B" + sheet.getLastRow()).setNumberFormat("dd.mm.yyyy");
+}
+
+/********************
+ * Plní záložku záznamy žebříčkových závodů
+ ********************/
+function populateZebrickoveZavody(url, sheet) {
+  var j = UrlFetchApp.fetch(url).getContentText();
   var parsedEventInfo = JSON.parse(j);
 
   for (x in parsedEventInfo.Data) {
@@ -215,34 +232,6 @@ function zebrickoveZavody(rok) {
     values = ["", datumZavodu, idZavodu, sport, disciplina, nazevZavodu, soutez, poradajiciKlub];
     sheet.appendRow(values);
   }
-
-  j = UrlFetchApp.fetch(urlJihoceske).getContentText();
-  parsedEventInfo = JSON.parse(j);
-
-  for (x in parsedEventInfo.Data) {
-    var datumZavodu = parsedEventInfo.Data[x].Date;
-    var idZavodu = parsedEventInfo.Data[x].ID;
-    var sport = parsedEventInfo.Data[x].Sport.NameCZ;
-    var disciplina = parsedEventInfo.Data[x].Discipline.NameCZ;
-    var nazevZavodu = parsedEventInfo.Data[x].Name;
-    var soutez = parsedEventInfo.Data[x].Level.ShortName;
-    var poradajiciKlub = parsedEventInfo.Data[x].Org1.Abbr;
-
-    values = ["", datumZavodu, idZavodu, sport, disciplina, nazevZavodu, soutez, poradajiciKlub];
-    sheet.appendRow(values);
-    //
-    // tady dodělat pridání radku a nastaveni URL pres setFormula()....
-    //
-  }
-
-  Logger.log(sheet.getLastRow());
-
-  // setřídíme podle datumu
-  sheet.getRange("B2:M" + sheet.getLastRow()).sort([{ column: 2, ascending: true }]);
-  // fixujeme záhlaví
-  sheet.setFrozenRows(1);
-  // formatujeme datum
-  sheet.getRange("B2:B" + sheet.getLastRow()).setNumberFormat("dd.mm.yyyy");
 }
 
 /********************
