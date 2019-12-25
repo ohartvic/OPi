@@ -17,9 +17,7 @@ function zavod(id, garant) {
   //vytvorime zalozku pro novy zavod
   var as = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = as.insertSheet();
-  
-  eventName = infoZavod.datum +"-" + infoZavod.name +" (" + id +")";
-  sheet.setName(eventName);
+  sheet.setName(constructTabName(infoZavod));
   
   headerColor = "#dfe3ee";
   
@@ -68,6 +66,8 @@ function zavod(id, garant) {
   sheet.getRange("B9:M"+sheet.getLastRow()).sort([{column: 4, ascending: true}]);
   // fixujeme záhlaví
   sheet.setFrozenRows(6);
+
+  return sheet.getSheetId();
 }
 
 /********************
@@ -174,8 +174,8 @@ function placenoKlubem(regNo, terminPrihlasky, classDesc, bezel, etapovy) {
 function zebrickoveZavody(rok) {
   if (rok == null) rok = (new Date()).getYear();
   
-  var urlCelostatni = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom='+rok+'-01-01&dateto='+rok+'-12-31&sport=1,2&level=1,2,3&method=getEventList';
-  var urlJihoceske = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom='+rok+'-01-01&dateto='+rok+'-12-31&sport=1&level=4&rg=JČ&method=getEventList';
+  const urlCelostatni = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom='+rok+'-01-01&dateto='+rok+'-12-31&sport=1,2&level=1,2,3&method=getEventList';
+  const urlJihoceske = 'https://oris.orientacnisporty.cz/API/?format=json&datefrom='+rok+'-01-01&dateto='+rok+'-12-31&sport=1&level=4&rg=JČ&method=getEventList';
   
   
   //vytvorime zalozku pro novy zavod
@@ -299,24 +299,42 @@ function generujVyuctovaniVybranehoZavodu() {
   var ui = SpreadsheetApp.getUi();
   
   // předpokládáme že jsme na záložce se seznamem závodu
-  var row = SpreadsheetApp.getActiveRange().getRowIndex();
-  var id = SpreadsheetApp.getActiveSheet().getRange("C"+row).getValue();
-  var nid = new Number(id);
+  var zebrickoveZavody = SpreadsheetApp.getActiveSheet();
+  var row = zebrickoveZavody.getRowIndex();
+  var id = zebrickoveZavody.getRange("C"+row).getValue();
+  var nazevZavodu = zebrickoveZavody.getRange("F"+row).getValue();
+  var garant = zebrickoveZavody.getRange("I"+row).getValue();
   
-  var garant = SpreadsheetApp.getActiveSheet().getRange("I"+row).getValue();
-  
-  if (id === null || isNaN(nid)) {
+  var eventId = new Number(id);
+  if (id === null || isNaN(eventId)) {
     ui.alert('ID závodu není k dispozici. \n\n Umistěte kurzor na řádek se závodem pro který chcete spustit generování vyúčtování.');
     return;
   }
+
+  // informace o závodu
+  var infoZavod = getEventInfo(eventId);
   
-  zavod(id, garant);
+  var sheetId = zavod(eventId, garant);
   
-  ui.alert('Podklady pro vyúčtování závodu č.'+id+' jsou vygenerovány.');
+  //nastavime link na záložku s vyúčtováním
+  Logger.log(sheetId);
+  zebrickoveZavody.getRange("F"+row).setFormula("=HYPERLINK(#gid="+sheetId+";"+nazevZavodu+")");  
+
+  ui.alert('Podklady pro vyúčtování závodu č.'+eventId+' jsou vygenerovány.');
    
 }
 
 
+/*****************************
+ * Konstruuje ORIS URL závodu 
+ *****************************/
 function constructOrisEventURL(id) {
   return "https://oris.orientacnisporty.cz/Zavod?id="+id;
+}
+
+/*****************************
+ * Konstruuje jméno záložky (mělo by být unikátní)
+ *****************************/
+function constructTabName(eventInfo) {
+  eventName = eventInfo.datum +"-" + eventInfo.name +" (" + eventInfo.id +")"; 
 }
