@@ -62,3 +62,6 @@ node_modules/@types/google-apps-script/apis/urlshortener_v1.d.ts
 node_modules/@types/google-apps-script/apis/youtube_v3.d.ts
 node_modules/@types/google-apps-script/apis/youtubeanalytics_v2.d.ts
 node_modules/@types/google-apps-script/apis/youtubepartner_v1.d.ts
+node_modules/@types/google-apps-script-oauth2/LICENSE
+node_modules/@types/google-apps-script-oauth2/package.json
+node_modules/@types/google-apps-script-oauth2/README.md
