@@ -37,7 +37,6 @@ function zavod(id, garant) {
   sheet.appendRow(["", "Disciplina", infoZavod.sport + " - " + infoZavod.disciplina]);
   sheet.appendRow(["", "ORIS", constructOrisEventURL(id)]);
   sheet.getRange(sheet.getLastRow(), sheet.getLastColumn()).setShowHyperlink(true);
-  sheet.appendRow([" "]);
 
   const headerColor = "#dfe3ee";
 
@@ -60,13 +59,13 @@ function zavod(id, garant) {
   var parsedEventInfo = JSON.parse(j);
 
   for (x in parsedEventInfo.Data) {
-    var regNo = parsedEventInfo.Data[x].RegNo;
+    var regNo = (infoZavod.disciplinaZkratka == "ST") ? "N/A" : parsedEventInfo.Data[x].RegNo;
     var name = parsedEventInfo.Data[x].Name;
     var fee = parsedEventInfo.Data[x].Fee;
     var terminPrihlasky = parsedEventInfo.Data[x].EntryStop;
     var kategorie = parsedEventInfo.Data[x].ClassDesc;
-    var bezel = startovali.bezel(regNo);
-    var platiKlub = placenoKlubem(regNo, terminPrihlasky, kategorie, bezel, (infoZavod.etapy.length > 0));
+    var bezel = (infoZavod.disciplinaZkratka == "ST") ? "N/A" :startovali.bezel(regNo);
+    var platiKlub = (infoZavod.disciplinaZkratka == "ST") ? "ANO" :placenoKlubem(regNo, terminPrihlasky, kategorie, bezel, (infoZavod.etapy.length > 0));
     values = ["", regNo, name, kategorie, terminPrihlasky, fee, bezel, platiKlub];
     sheet.appendRow(values);
   }
@@ -74,7 +73,7 @@ function zavod(id, garant) {
   // setřídíme podle kategorie
   sheet.getRange("B9:M" + sheet.getLastRow()).sort([{ column: 4, ascending: true }]);
   // fixujeme záhlaví
-  sheet.setFrozenRows(6);
+  sheet.setFrozenRows(7);
 
   return sheet.getSheetId();
 }
@@ -92,6 +91,7 @@ function getEventInfo(eventId) {
   var eventDate = new Date(j.Data.Date);
   var poradajiciOddil = j.Data.Org1.Abbr;
   var typZavodu = j.Data.Discipline.NameCZ;
+  var typZavoduShort = j.Data.Discipline.ShortName;
   var typOB = j.Data.Sport.NameCZ;
   var noStages = new Number(j.Data.Stages);
 
@@ -107,7 +107,7 @@ function getEventInfo(eventId) {
   var datumZavodu = eventDate.getDate() + "." + mesic + "." + eventDate.getYear();
 
   //priprav navratovy objekt
-  var eventInfo = { id: eventId, name: eventName, oddil: poradajiciOddil, datum: datumZavodu, sport: typOB, disciplina: typZavodu, etapy: stages };
+  var eventInfo = { id: eventId, name: eventName, oddil: poradajiciOddil, datum: datumZavodu, sport: typOB, disciplina: typZavodu, disciplinaZkratka: typZavoduShort, etapy: stages };
 
   return eventInfo;
 }
@@ -137,7 +137,7 @@ function kdoStartoval(eventId) {
  ********************/
 function getAge(regNo) {
   var s = "NA"
-  if (regNo.length == 7 && regNo.lastIndexOf("OPI") == 0) {
+  if (regNo != null && regNo.length == 7 && regNo.lastIndexOf("OPI") == 0) {
     s = regNo.substring("OPI".length, "OPI".length + 2);
 
     if (Number(s) < 30) s = "20" + s;
