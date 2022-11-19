@@ -195,26 +195,34 @@ function getAge(regNo) {
   return s;
 }
 
-/********************
- * ma zavodnik narok na proplaceni startovneho?
- ********************/
+//
+// ma zavodnik narok na proplaceni startovneho?
+// ... podle aktuálních provozních pravidel klubu
+//
 function placenoKlubem(regNo, terminPrihlasky, classDesc, bezel, etapovy) {
-  vekZavodnika = getAge(regNo);
-  s = "NE";
+  const vekZavodnika = getAge(regNo);
+  let s = "NE";
 
+  if (bezel == "NE" && vekZavodnika > 10 && vekZavodnika < 21) {
+      s = "MOŽNÁ, prověř důvod proč neběžel?"
+  }
+  
   //pokud je ve vekove kategorii 11 az 20 let
-  if (bezel == "ANO" && vekZavodnika > 10 && vekZavodnika < 21) {
+  if (bezel == "ANO" && vekZavodnika < 21) {
     if (etapovy) s = "ZKONTROLUJ ETAPY";
     else s = "ANO";
-    // pokud startoval v P,T nebo faborkach nebo se prihlasil v druhem ci dalsim terminu pak zkontroluj zda ma narok
-    if (classDesc.indexOf("P") > -1 ||
+    // pokud startoval v P,T nebo faborkach nebo se prihlasil v druhem 
+    // ci dalsim terminu pak zkontroluj v ORISu zda ma narok
+    if (vekZavodnika > 10 && (classDesc.indexOf("P") > -1 ||
       classDesc.indexOf("T") > -1 ||
       classDesc.indexOf("F") > -1 ||
       classDesc.indexOf("N") > -1 ||
       classDesc.indexOf("HDR") > -1 ||
-      classDesc.indexOf("10L") > -1 ||
-      Number(terminPrihlasky) > 1) {
-      s = "ASI NE"
+      classDesc.indexOf("10L") > -1)) {
+      s = "PROVĚŘ"
+    }
+    if (Number(terminPrihlasky) > 1) {
+      s = "NE, 2. termín přihlášky"
     }
   }
 
