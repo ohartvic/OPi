@@ -22,7 +22,7 @@ function zavod(id, garant) {
     sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
     sheet.setName(sheetName);
   } else {
-    //pokud existuje pak se zjitíme zda ji smazat a znovu vytvořit; pokud ne pak konec
+    //pokud existuje pak se zjistíme zda ji smazat a znovu vytvořit; pokud ne pak konec
     if (vymazatSheet(sheetName)) {
       sheet.clear();
       SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sheet);
@@ -60,7 +60,7 @@ function zavod(id, garant) {
   const sluzby = doplnkoveSluzby(eventId);
 
   // zjistime kdo je prihlaseny, v jake kategorii atd.
-  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventEntries&eventid=' + eventId + '&clubid=OPI';
+  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventEntries&eventid=' + eventId + '&clubid='+getJmenoKlubu();
 
   const j = UrlFetchApp.fetch(url).getContentText();
   const parsedEventInfo = JSON.parse(j);
@@ -132,7 +132,7 @@ function getEventInfo(eventId) {
 // seznam kdo startoval
  //
 function kdoStartoval(eventId) {
-  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventResults&eventid=' + eventId + '&clubid=OPI';
+  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventResults&eventid=' + eventId + '&clubid='+getJmenoKlubu();
 
   var json = UrlFetchApp.fetch(url).getContentText();
   var j = JSON.parse(json);
@@ -151,7 +151,7 @@ function kdoStartoval(eventId) {
 // doplňkové služby - ubytování, jídlo, ....
  //
 function doplnkoveSluzby(eventId) {
-  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventServiceEntries&eventid=' + eventId + '&clubid=OPI';
+  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventServiceEntries&eventid=' + eventId + '&clubid='+getJmenoKlubu();
 
   var json = UrlFetchApp.fetch(url).getContentText();
   var j = JSON.parse(json);
@@ -204,26 +204,16 @@ function placenoKlubem(regNo, terminPrihlasky, classDesc, bezel, etapovy) {
   const vekZavodnika = getAge(regNo);
   let s = "NE";
 
-  if (bezel == "NE" && vekZavodnika > 10 && vekZavodnika < 21) {
-      s = "MOŽNÁ, prověř důvod proč neběžel?"
-  }
-  
-  //pokud je ve vekove kategorii 11 az 20 let
-  if (bezel == "ANO" && vekZavodnika < 21) {
-    if (etapovy) s = "ZKONTROLUJ ETAPY";
-    else s = "ANO";
-    // pokud startoval v P,T nebo faborkach nebo se prihlasil v druhem 
-    // ci dalsim terminu pak zkontroluj v ORISu zda ma narok
-    if (vekZavodnika > 10 && (classDesc.indexOf("P") > -1 ||
-      classDesc.indexOf("T") > -1 ||
-      classDesc.indexOf("F") > -1 ||
-      classDesc.indexOf("N") > -1 ||
-      classDesc.indexOf("HDR") > -1 ||
-      classDesc.indexOf("10L") > -1)) {
-      s = "PROVĚŘ"
-    }
-    if (Number(terminPrihlasky) > 1) {
-      s = "NE, 2. termín přihlášky"
+  // řešíme mládež pod 21 let
+  if (vekZavodnika < 21) {
+    // závodník neběžel, je třeba prověřit z jakého důvodu
+    if (bezel == "NE") {
+        s = "MOŽNÁ, prověř důvod proč neběžel?"
+    } else {
+      if (etapovy) s = "ZKONTROLUJ ETAPY";
+        else s = "ANO";
+      if (Number(terminPrihlasky) > 1)
+        s = "NE, 2. termín přihlášky"
     }
   }
 
@@ -358,6 +348,7 @@ function generujVyuctovaniVybranehoZavodu() {
   const nazevZavodu = zebrickoveZavody.getRange("F" + row).getValue();
   const garant = zebrickoveZavody.getRange("I" + row).getValue();
 
+  
   var eventId = new Number(id);
   if (id === null || isNaN(eventId)) {
     ui.alert('ID závodu není k dispozici. \n\n Umistěte kurzor na řádek se závodem pro který chcete spustit generování vyúčtování.');
@@ -388,6 +379,14 @@ function vymazatSheet(sheetName) {
     ui.ButtonSet.YES_NO);
 
   return (result == ui.Button.YES);
+}
+
+//
+// Načti jméno klubu z properties
+//
+function getJmenoKlubu()
+{
+  return PropertiesService.getScriptProperties().getProperty("jmenoKlubu");
 }
 
 //
