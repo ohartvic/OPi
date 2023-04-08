@@ -120,7 +120,7 @@ function getEventInfo(eventId) {
 
   //extrahuj datum ve formatu dd.mm.yyyy
   const mesic = new Number(eventDate.getMonth()) + 1;
-  const datumZavodu = eventDate.getDate() + "." + mesic + "." + eventDate.getYear();
+  const datumZavodu = eventDate.getDate() + "." + mesic + "." + eventDate.getFullYear();
 
   //priprav navratovy objekt
   const eventInfo = { id: eventId, name: eventName, oddil: poradajiciOddil, datum: datumZavodu, sport: typOB, disciplina: typZavodu, disciplinaZkratka: typZavoduShort, etapy: stages };
