@@ -2,6 +2,8 @@
 // podklady pro vyúčtování závodu
 //
 function zavod(id, garant) {
+  Logger.log("Začátek zpracování závodu: ID=%s", id);
+
   if (id) var eventId = id
   else generujVyuctovaniZavodu();
 
@@ -29,30 +31,6 @@ function zavod(id, garant) {
     } else return;
   }
 
-  // záhlaví s informacemi o závodu
-  sheet.appendRow([" "]);
-  sheet.appendRow(["", "Garant závodu", garant, "", "Datum závodu", infoZavod.datum]);
-  sheet.appendRow(["", "Název závodu", infoZavod.name, "", "Disciplina", infoZavod.sport + " - " + infoZavod.disciplina]);
-
-  sheet.appendRow(["", "Přihlášky", "", "", "Doplňkové služby", ""]);
-
-  let formula = "=HYPERLINK(\"" + constructOrisPrehledPrihlasenychURL(id) + "\";\"ORIS Přihlášky\")"
-  sheet.getRange(sheet.getLastRow(), sheet.getLastColumn()-3).setFormula(formula);
-  formula = "=HYPERLINK(\"" + constructOrisDoplnkoveSluzbyURL(id) + "\";\"ORIS Služby\")"
-  sheet.getRange(sheet.getLastRow(), sheet.getLastColumn()).setFormula(formula);
-
-  const headerColor = "#dfe3ee";
-
-  // formatujeme prvni sloupec, oddělovací řádku a barvu
-  sheet.getRange("B2:B4").setBackground(headerColor);
-  sheet.getRange("E2:E4").setBackground(headerColor);
-  sheet.setColumnWidth(1, 20);
-  sheet.setColumnWidth(3, 150);
-
-  //vytvoříme záhlaví tabulky s informacemi o startujících
-  sheet.appendRow(["", "ID závodníka", "Jméno a příjmení", "Kategorie", "Termín přihlášky", "Startovné", "Startoval?", "Hradí startovné klub?", "Doplňkové služby"])
-  sheet.getRange(sheet.getLastRow(), 2, 1, 8).setBackground(headerColor);
-
   // zjistime kdo z prihlasenych startoval
   const startovali = kdoStartoval(eventId);
 
@@ -67,6 +45,11 @@ function zavod(id, garant) {
 
   // vypíšeme jednotlivé závodníky ...
   // .. pozor na štafety ST
+  // Shromažďujeme data do pole
+  let startovneCelkem = 0;
+  let startovnKlub = 0;
+  let doplnkoveSluzbyCelkem = 0;
+  let data = [];
   for (x in parsedEventInfo.Data) {
     let regNo = (infoZavod.disciplinaZkratka == "ST") ? "N/A" : parsedEventInfo.Data[x].RegNo;
     let name = parsedEventInfo.Data[x].Name;
@@ -76,12 +59,52 @@ function zavod(id, garant) {
     let bezel = (infoZavod.disciplinaZkratka == "ST") ? "N/A" : startovali.bezel(regNo);
     let platiKlub = (infoZavod.disciplinaZkratka == "ST") ? "ANO" : placenoKlubem(regNo, terminPrihlasky, kategorie, bezel, (infoZavod.etapy.length > 0));
     let spaniJidlo = (infoZavod.disciplinaZkratka == "ST") ? "Koukni do ORISu" : sluzby.kolik(regNo);
-    let values = ["", regNo, name, kategorie, terminPrihlasky, fee, bezel, platiKlub, spaniJidlo];
-    sheet.appendRow(values);
+    data.push(["", regNo, name, kategorie, terminPrihlasky, fee, bezel, platiKlub, spaniJidlo]);
   }
 
+  Logger.log("Záložka %s vytvořena.", sheetName);
+
+  // záhlaví s informacemi o závodu
+  sheet.appendRow([" "]);
+  sheet.appendRow(["", "Garant závodu", garant, "", "Datum závodu", infoZavod.datum, "", "Startovné celkem", startovneCelkem]);
+  sheet.appendRow(["", "Název závodu", infoZavod.name, "", "Disciplina", infoZavod.sport + " - " + infoZavod.disciplina, "", "Startovné klub", startovnKlub]);
+  sheet.appendRow(["", "Přihlášky", "", "", "Doplňkové služby", "", "", "Doplňkové služby celkem", doplnkoveSluzbyCelkem]);
+
+  let lastRowIndex = sheet.getLastRow();
+  let link = SpreadsheetApp.newRichTextValue().setText("ORIS Přihlášky").setLinkUrl(constructOrisPrehledPrihlasenychURL(id)).build();
+  sheet.getRange("C"+lastRowIndex).setRichTextValue(link).setShowHyperlink(true);
+  link = SpreadsheetApp.newRichTextValue().setText("ORIS Služby").setLinkUrl(constructOrisDoplnkoveSluzbyURL(id)).build();
+  sheet.getRange("F"+lastRowIndex).setRichTextValue(link).setShowHyperlink(true);
+
+  const headerColor = "#dfe3ee";
+  // formatujeme prvni sloupec, oddělovací řádku a barvu
+  sheet.getRange("B2:B4").setBackground(headerColor);
+  sheet.getRange("E2:E4").setBackground(headerColor);
+  sheet.getRange("H2:H4").setBackground(headerColor);
+  sheet.setColumnWidth(1, 20);
+  sheet.setColumnWidth(3, 150);
+
+  //vytvoříme záhlaví tabulky s informacemi o startujících
+  sheet.appendRow(["", "ID závodníka", "Jméno a příjmení", "Kategorie", "Termín přihlášky", "Startovné", "Startoval?", "Hradí startovné klub?", "Doplňkové služby"])
+  sheet.getRange(sheet.getLastRow(), 2, 1, 8).setBackground(headerColor);
+  const filter = sheet.getRange(sheet.getLastRow(), 2, 1, 8).createFilter();
+
+  Logger.log("Záhlaví vytvořeno.");
+
+  // doplníme součty
+  sheet.getRange("I2").setFormula("=SUM(F6:F"+Number(data.length+5)+")");
+  sheet.getRange("I3").setFormula("=SUMIF(H6:H"+Number(data.length+5)+","+'"<>NE",'+"F6:F"+Number(data.length+5)+")");
+  sheet.getRange("I4").setFormula("=SUM(I6:I"+Number(data.length+5)+")");
+
+  Logger.log("Součty vytvořeny pro oblast ["+sheet.getLastRow()+","+data.length+"].");
+
+  // Přidání všech dat najednou do listu
+  sheet.getRange(sheet.getLastRow() + 1, 1, data.length, data[0].length).setValues(data);
+
+  Logger.log("Data závodu načtena.");
+
   // setřídíme podle kategorie
-  const lastRowIndex = sheet.getLastRow();
+  lastRowIndex = sheet.getLastRow();
   sheet.getRange("B9:M" + lastRowIndex).sort([{ column: 4, ascending: true }]);
   // formatujeme CZK
   sheet.getRange("F2:F" + lastRowIndex).setNumberFormat("#,##0.00 [$Kč]");
@@ -92,7 +115,11 @@ function zavod(id, garant) {
 
   sheet.autoResizeColumns(2, 8);
 
-  return sheet.getSheetId();
+  Logger.log("Záložka %s formátována.", sheetName);
+
+  const zavod = { sheetId: sheet.getSheetId(), sheetName: sheetName };
+
+  return zavod;
 }
 
 //
@@ -130,21 +157,38 @@ function getEventInfo(eventId) {
 
 //
 // seznam kdo startoval
- //
+//
 function kdoStartoval(eventId) {
-  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventResults&eventid=' + eventId + '&clubid='+getJmenoKlubu();
+  const cache = CacheService.getScriptCache();
+  const cachedData = cache.get(eventId + "_startovali");
 
-  var json = UrlFetchApp.fetch(url).getContentText();
-  var j = JSON.parse(json);
-  var startovali = [];
-
-  for (x in j.Data) {
-    startovali.push(j.Data[x].RegNo);
+  if (cachedData) {
+    // Načtení z cache a přidání chybějící metody
+    const startovali = JSON.parse(cachedData);
+    startovali.bezel = function (reg) {
+      return (this.bezeli.lastIndexOf(reg) > -1) ? "ANO" : "NE";
+    };
+    return startovali;
   }
 
-  rc = { bezeli: startovali, bezel: function (reg) { return (startovali.lastIndexOf(reg) > -1) ? "ANO" : "NE" } }
+  // Pokud není v cache, načteme z API
+  const url = 'https://oris.orientacnisporty.cz/API/?format=json&method=getEventResults&eventid=' + eventId + '&clubid=' + getJmenoKlubu();
+  const json = UrlFetchApp.fetch(url).getContentText();
+  const j = JSON.parse(json);
+  const startovali = { bezeli: [] };
 
-  return rc;
+  for (let x in j.Data) {
+    startovali.bezeli.push(j.Data[x].RegNo);
+  }
+
+  // Přidáme metodu
+  startovali.bezel = function (reg) {
+    return (this.bezeli.lastIndexOf(reg) > -1) ? "ANO" : "NE";
+  };
+
+  // Uložíme do cache (bez metody)
+  cache.put(eventId + "_startovali", JSON.stringify({ bezeli: startovali.bezeli }), 300); // Cache na 5 min
+  return startovali;
 }
 
 //
@@ -179,7 +223,7 @@ function doplnkoveSluzby(eventId) {
 
 //
  //spocitani veku zavodnik na základě jeho ORIS registračního ID
- // např. OPI6900 - kde 69 je rok naorzení
+ // např. OPI6900 - kde 69 je rok narození
  //
 function getAge(regNo) {
   let s = "NA"
@@ -290,8 +334,8 @@ function onOpen() {
   ui.createMenu('OPI')
     .addItem('Generuj vyúčtování vybraného závodu ', 'generujVyuctovaniVybranehoZavodu')
     .addSeparator()
-    .addItem('Generuj vyúčtování závodu ', 'generujVyuctovaniZavodu')
-    .addItem('Generuj žebříčkové závody ', 'generujZebrickoveZavody')
+//    .addItem('Generuj vyúčtování závodu ', 'generujVyuctovaniZavodu')
+//    .addItem('Generuj žebříčkové závody ', 'generujZebrickoveZavody')
     .addToUi();
 }
 
@@ -345,7 +389,9 @@ function generujVyuctovaniVybranehoZavodu() {
   const zebrickoveZavody = SpreadsheetApp.getActiveSheet();
   const row = zebrickoveZavody.getActiveRange().getRowIndex();
   const id = zebrickoveZavody.getRange("C" + row).getValue();
-  const nazevZavodu = zebrickoveZavody.getRange("F" + row).getValue();
+
+  const nazevCell = zebrickoveZavody.getRange("F" + row);
+  const nazevZavodu = nazevCell.getValue();
   const garant = zebrickoveZavody.getRange("I" + row).getValue();
 
   
@@ -355,14 +401,19 @@ function generujVyuctovaniVybranehoZavodu() {
     return;
   }
 
-  // informace o závodu
-  const infoZavod = getEventInfo(eventId);
+  Logger.log("Zpracovávám závod ID = {%s}", eventId);
+  const zavodInfo = zavod(eventId, garant);
 
-  const sheetId = zavod(eventId, garant);
-
-  if (sheetId != null || sheetId != undefined) {
+  if (zavodInfo.sheetId != null || zavodInfo.sheetId != undefined) {
     //nastavime link na záložku s vyúčtováním
-    zebrickoveZavody.getRange("F" + row).setFormula("=HYPERLINK(\"#gid=" + sheetId + "\";\"" + nazevZavodu + "\")");
+    const link = SpreadsheetApp.newRichTextValue().setText(nazevZavodu).setLinkUrl("#gid=" + zavodInfo.sheetId).build();
+    nazevCell.setRichTextValue(link);
+    nazevCell.setShowHyperlink(true);
+
+    const sheetZavodu = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(zavodInfo.sheetName);
+    zebrickoveZavody.getRange("J"+row).setValue(sheetZavodu.getRange("I2").getValue());
+    zebrickoveZavody.getRange("K"+row).setValue(sheetZavodu.getRange("I3").getValue());
+
     ui.alert('Podklady pro vyúčtování závodu č.' + eventId + ' jsou vygenerovány.');
   }
 }
